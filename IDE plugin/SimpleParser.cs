@@ -4,56 +4,75 @@ namespace IDE_plugin
 {
     public static class SimpleParser
     {
-        //TODO parentheses
-        //TODO -, /
         public static IExpression Parse(string text)
         {
-            var s1 = new Stack<IExpression>();
+            var expressions = new Stack<IExpression>();
             var operations = new Stack<char>();
+
+            var operationPriorities = new Dictionary<char, int> {{'+', 1}, {'-', 1}, {'*', 2}, {'/', 2}};
+
+            void Combine(char prev)
+            {
+                var op2 = expressions.Pop();
+                var op1 = expressions.Pop();
+                expressions.Push(new BinaryExpression(op1, op2, prev.ToString()));
+            }
 
             foreach (var ch in text)
             {
                 switch (ch)
                 {
                     case '+':
+                    case '-':
+                    case '*':
+                    case '/':
                     {
                         while (operations.Count > 0)
                         {
                             var prev = operations.Pop();
-                            var op2 = s1.Pop();
-                            var op1 = s1.Pop();
-                            s1.Push(new BinaryExpression(op1, op2, prev.ToString()));
-                        }
-
-                        operations.Push('+');
-                        break;
-                    }
-                    case '*':
-                        while (operations.Count > 0)
-                        {
-                            var prev = operations.Pop();
-                            if (prev == '+')
+                            if (!operationPriorities.ContainsKey(prev) ||
+                                operationPriorities[prev] < operationPriorities[ch])
                             {
                                 operations.Push(prev);
                                 break;
                             }
 
-                            var op2 = s1.Pop();
-                            var op1 = s1.Pop();
-                            s1.Push(new BinaryExpression(op1, op2, prev.ToString()));
+                            Combine(prev);
                         }
 
-                        operations.Push('*');
+                        operations.Push(ch);
                         break;
+                    }
+                    case '(':
+                    {
+                        operations.Push('(');
+                        break;
+                    }
+                    case ')':
+                    {
+                        while (true)
+                        {
+                            var prev = operations.Pop();
+                            if (prev == '(')
+                            {
+                                expressions.Push(new ParenExpression(expressions.Pop()));
+                                break;
+                            }
+
+                            Combine(prev);
+                        }
+
+                        break;
+                    }
                     default:
                     {
                         if (char.IsDigit(ch))
                         {
-                            s1.Push(new Literal(ch.ToString()));
+                            expressions.Push(new Literal(ch.ToString()));
                         }
                         else if (char.IsLetter(ch))
                         {
-                            s1.Push(new Variable(ch.ToString()));
+                            expressions.Push(new Variable(ch.ToString()));
                         }
 
                         break;
@@ -64,12 +83,10 @@ namespace IDE_plugin
             while (operations.Count > 0)
             {
                 var prev = operations.Pop();
-                var op2 = s1.Pop();
-                var op1 = s1.Pop();
-                s1.Push(new BinaryExpression(op1, op2, prev.ToString()));
+                Combine(prev);
             }
 
-            return s1.Pop();
+            return expressions.Pop();
         }
     }
 }
