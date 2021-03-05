@@ -1,9 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Text;
-using NUnit.Framework;
-
-namespace IDE_plugin
+﻿namespace IDE_plugin
 {
     public interface IExpression
     {
